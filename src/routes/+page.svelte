@@ -1,18 +1,19 @@
-<script>
-    import { onMount } from "svelte";
-    import MenuButton from "../components/MenuButton.svelte";
+<script lang="ts">
+    import { onMount, tick } from "svelte";
     import HeaderZone from "../components/HeaderZone.svelte";
     import UserInputZone from "../components/UserInputZone.svelte";
     import '../app.css';
     import ChatZone from "../components/ChatZone.svelte";
     import LeftPanel from "../components/LeftPanel.svelte";
-    import ApiValidation from "../components/ApiValidation.svelte";
+    import { createSessionId } from "../services/session.service";
+    import { getAllConversations } from "../services/conversation.service";
+    import { conversations, currentConversationId } from "../stores/store";
     
-    let container;
+    let container: HTMLDivElement | null = null;
 
-    let apiCorrect = $state(false);
+    export async function scrollToBottom(){
+        await tick();
 
-    export function scrollToBottom(){
         if(container){
             container.scrollTo({
                 top: container.scrollHeight,
@@ -21,19 +22,18 @@
         }
     }
 
-    export function validateApi(){
-        apiCorrect = true;
-    }
+    onMount(async () => {
+        await createSessionId();
+        const data = await getAllConversations();
+        const list = Object.values(data);
+        conversations.set(list);
 
-    onMount(() => {
-        if(localStorage.getItem("API_KEY")){
-            apiCorrect = true;
+        if (list.length) {
+            currentConversationId.set(list[0].conversationId);
         }
     });
 
 </script>
-
-{#if apiCorrect}
     <section id="container">
         <section id="left-panel">
             <LeftPanel />
@@ -41,18 +41,15 @@
         <header>
             <HeaderZone />
         </header>
-        <section id="right-panel" bind:this={container}>
+        <div id="right-panel" bind:this={container}>
             <main>
                 <ChatZone onNewMessage={scrollToBottom}/>
             </main>
             <footer>
                 <UserInputZone />
             </footer>
-        </section>
+        </div>
     </section>
-{:else}
-    <ApiValidation  onApiValidated={validateApi} />
-{/if}
 <style>
     
     :root {

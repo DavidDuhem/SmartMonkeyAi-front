@@ -1,146 +1,34 @@
 <script>
-    import { onMount } from "svelte";
-    import { get } from 'svelte/store';
-    import { tick } from 'svelte';
-    import { currentConversation, messages, userMessages } from './store.js';
+    import { currentConversation } from "../stores/store";
     import Markdown from 'svelte-exmarkdown';
 
     export let onNewMessage;
 
-    let previousMessagesLength = $userMessages.length;
-
-    $: lastUserMessage = $userMessages[$userMessages.length - 1];
-
-    $: if(lastUserMessage) {
-        const currentLength = $userMessages.length;
-        if(currentLength > previousMessagesLength)
-        {
-            console.log("RUNNING AI");
-
-            previousMessagesLength = currentLength;
-            runAI($userMessages[currentLength - 1], get(currentConversation));
-            runAfterUpdate();
-        }
-        else{
-            previousMessagesLength = currentLength;
-        }
-    }
-
-    // SHOULD BE IN GLOBAL FILE FOR CONST
-    const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
-    const DATABASE_MESSAGES_URL = 'http://127.0.0.1:8090/api/collections/ochat_messages/records';
-
-    // Also maybe I should put anything database/API related elsewhere but it's convenient for now
-    async function runAI(prompt, id){
-        try{
-            const response = await fetch(MISTRAL_API_URL,{
-                method: "POST",
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem("API_KEY")}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'mistral-large-latest',
-                    messages: [{ role: 'user', content: prompt }]
-                })
-            });
-
-            if(!response.ok)
-            {
-                throw new Error("Error : " + response.status)
-            }
-
-            const data = await response.json();
-
-            if(data.choices.length > 0)
-            {
-                const message = data.choices[0].message.content;
-                const formData = new FormData();
-                formData.append("content", message);
-                formData.append("is_ai", "true");
-                formData.append("relation", id);
-
-                await addEntryToDataBase(formData);
-
-                messages.update(current => [...current, {is_ai: true, content: message, relation: id}]);
-                runAfterUpdate();
-            }
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
-        }
-    }
-
-    async function addEntryToDataBase(entry){
-        try{
-            await fetch(DATABASE_MESSAGES_URL,{
-                method: "POST",
-                body: entry,
-            });
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
-        }
-    }
-
-    async function runAfterUpdate(){
-        await tick();
+    $: if ($currentConversation?.messages?.length) {
         onNewMessage?.();
     }
-
-    async function initChat(){
-        try{
-            const response = await fetch(DATABASE_MESSAGES_URL);
-
-            if(!response.ok)
-            {
-                throw new Error("Error : " + response.status)
-            }
-
-            const responseData = await response.json();
-            
-            for(const item of responseData.items)
-            {
-                messages.update(current => [...current, {content: item.content, is_ai: item.is_ai, relation: item.relation}]);
-            }
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
-        }
-    }
-
-    onMount(() => {
-        onNewMessage?.();
-        initChat();
-    });
-
 </script>
 
-
-{#each $messages as item}
-    <!-- Would it be better to fetch each time a conversation is selected and not keep track locally ? -->
-    {#if item.relation === $currentConversation}
-        {#if !item.is_ai}
-            <div class="user">
-                <p>{item.content}</p>
-                <div class="avatar">
-                    <img class="avatar" src="/user-avatar.jpg" alt="user avatar"/>
-                </div>
+{#if $currentConversation}
+    {#each $currentConversation.messages as message}
+        <div class="user">
+            <p>{message.prompt}</p>
+            <div class="avatar">
+                <img class="avatar" src="/user-avatar.jpg" alt="user avatar"/>
             </div>
-        {:else}
-            <div class="ai">
-                <p><Markdown md={item.content} /></p>
-                <div class="avatar">
-                    <img class="avatar" src="/ai-avatar.png" alt="ai avatar"/>
-                </div>
-            </div>
-        {/if}
-    {/if}
+        </div>
 
-{/each}
+        <div class="ai">
+            <p><Markdown md={message.response} /></p>
+            <div class="avatar">
+                <img class="avatar" src="/ai-avatar.png" alt="ai avatar"/>
+            </div>
+        </div>
+    {/each}
+{/if}
 
 <style>
-    .user{
+     .user{
         display: flex;
         flex-direction: row;
         justify-content: flex-end;

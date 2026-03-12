@@ -1,153 +1,41 @@
 
-<script>
-    import { onMount } from "svelte";
-    import { conversations, currentConversation, messages, userMessages } from './store.js';
-    import MdDelete from 'svelte-icons/md/MdDelete.svelte'
+<script lang="ts">
+    import { conversations, currentConversationId, currentConversation, messages, userMessages } from '../stores/store';
+    import { createConversation, deleteConversation } from "../services/conversation.service";
+    import { Trash2 } from "lucide-svelte";
 
-    const DATABASE_CHATS_URL = 'http://127.0.0.1:8090/api/collections/ochat_conversations/records';
-    const DATABASE_MESSAGES_URL = 'http://127.0.0.1:8090/api/collections/ochat_messages/records';
+    let addConvInputValue : string;
 
-    let addMoreInputValue;
-    let selectedConvIndex = 0;
-
-    async function initChatsList(){
-        try{
-            const response = await fetch(DATABASE_CHATS_URL);
-
-            if(!response.ok)
-            {
-                throw new Error("Error : " + response.status)
-            }
-            
-            const responseData = await response.json();
-
-            for(const item of responseData.items)
-            {
-                conversations.update(current => [...current, {id: item.id, title: item.title, deletable: item.deletable}]);
-            }
-
-            if(responseData.items.length > 0)
-            {
-                // On refresh, set first conversation as default
-                currentConversation.set(responseData.items[0].id);
-            }
-            else{
-                // Incentive to create a conversation or create one auto (easy way I think)
-                addConversation("Default Conversation", false);
-            }
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
-        }
+    async function handleConvDeleted(conversationId: number){
+        await deleteConversation(conversationId);
+        conversations.update(list => list.filter(conv => conv.conversationId !== conversationId));
+        currentConversationId.set(1);
     }
 
-    async function handleConvDeleted(id){
-        // Improvement would be a confirmation popup
-
-        // Remove conversation from database
-        try{
-            await fetch(`${DATABASE_CHATS_URL}/${id}`, {
-            method: "DELETE"
-             });
-
-            // Remove locally
-            conversations.update(current => current.filter(current => current.id !== id));
-            handleConvSelected($conversations[$conversations.length - 1].id);
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
-        }
-
-        // Get all messages with this id
-
-        try{
-            const response = await fetch(`${DATABASE_MESSAGES_URL}?filter=(relation='${id}')`);
-
-            if (!response.ok) {
-                throw new Error("Error : " + response.status)
-            }
-
-            const responseData = await response.json();
-            const toDelete = responseData.items.map(item => item.id);
-
-            if(toDelete.length > 0)
-            {
-                // Remove messages from database
-                try{
-                    const deleteResponse = toDelete.map(id =>
-                        fetch(`${DATABASE_MESSAGES_URL}/${id}`,{
-                        method: "DELETE"
-                    }));
-
-                    const responses = await Promise.all(deleteResponse);
-                    const successfulDeletes = responses.every(response => response.ok);
-
-                    if(successfulDeletes)
-                    {
-                        // Remove locally
-                        messages.update(current => current.filter(current => current.relation !== id));
-                        userMessages.update(current => current.filter(current => current.relation !== id));
-                    }
-                    else{
-                        throw new Error("Error : " + response.status);
-                    }
-                }
-                catch(error){
-                    console.error("Fetch Failed : " + error.message);
-                }
-            }
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
-        }
-    }
-
-    function handleConvSelected(id, index){
-        if($currentConversation != id)
-        {
-            currentConversation.set(id);
-            selectedConvIndex = index;
+    function handleConvSelected(conversationId: number) {
+        if ($currentConversationId !== conversationId) {
+            currentConversationId.set(conversationId);
         }
     }
 
     function handleAddConv()
     {
-        if(addMoreInputValue.trim() !== "")
+        if(addConvInputValue.trim() !== "")
         {
-            addConversation(addMoreInputValue, true);
-            addMoreInputValue = "";
+            addConversation(addConvInputValue);
+            addConvInputValue = "";
         }
     }
 
-    async function addConversation(name, deletable){
-
-        const formData = new FormData();
-        formData.append("title", name);
-        formData.append("deletable", deletable);
-
-        try{
-            const response = await fetch(DATABASE_CHATS_URL,{
-                method: "POST",
-                body: formData,
-            });
-
-            if(!response.ok){
-                throw new Error("Error : " + response.status)
-            }
-            
-            const responseData = await response.json();
-
-            conversations.update(current => [...current, {id: responseData.id, title: name, deletable: deletable}]);
-            handleConvSelected($conversations[$conversations.length - 1].id, $conversations.length - 1);
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
+    async function addConversation(name : string){
+        try {
+            const newConv = await createConversation(name);
+            conversations.update(list => [...list, newConv]);
+            currentConversationId.set(newConv.conversationId);
+        } catch (err) {
+            console.error("Erreur lors de la création de la conversation :", err);
         }
     }
-
-    onMount(() => {
-        initChatsList();
-    });
 
 </script>
 
@@ -156,19 +44,43 @@
 
 <div class="list-conv">
     <ul>
-    {#each $conversations as item, index}
-        <!-- Add Accessibility feature with keyboard  -->
-        <li class="conv" class:selected={selectedConvIndex === index} on:click={() => handleConvSelected(item.id, index)}>
-            <p>{item.title}</p>
-            {#if item.deletable}
-            <span class="conv-more" on:click={() => handleConvDeleted(item.id)}><MdDelete /></span>
-            {/if}
+    {#each $conversations as conv (conv.conversationId)}
+        <li class="conv-wrapper">
+            <button
+                class="conv"
+                type="button"
+                class:selected={$currentConversationId === conv.conversationId}
+                on:click={() => handleConvSelected(conv.conversationId)}
+            >
+                <span class="conv-text">{conv.conversationName}</span>
+
+                {#if conv.conversationId !== 1}
+                <span
+                    class="conv-delete"
+                    role="button"
+                    tabindex="0"
+                    on:click={(e) => {
+                        e.stopPropagation();
+                        handleConvDeleted(conv.conversationId);
+                    }}
+                    on:keydown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleConvDeleted(conv.conversationId);
+                        }
+                    }}
+                    aria-label="Supprimer la conversation"
+                >
+                    <Trash2 width="20" height="20" />
+                </span>
+                {/if}
+            </button>
         </li>
     {/each}
     </ul>
 </div>
 <form on:submit={handleAddConv} class="addNew">
-    <input type="text" placeholder="Enter Chat Name" bind:value={addMoreInputValue}/>
+    <input type="text" placeholder="Enter Chat Name" bind:value={addConvInputValue}/>
     <button type="submit" class="add-btn">Add</button>
 </form>
 
@@ -195,11 +107,14 @@
     }
 
     input, button{
+        all: unset;
         box-sizing: border-box;
         width: 100%;
         height: 2rem;
         text-align: center;
+        color: white;
     }
+    
 
     input{
         resize: none;
@@ -212,13 +127,7 @@
         font-size: 1.3rem;
     }
 
-    ul{
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .conv{
+    .conv-wrapper{
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -233,32 +142,33 @@
         background-color: #272727;
     }
 
-    .conv .conv-more{
-        visibility: hidden;
-        width: 1.5rem;
-        height: 1.5rem;
-        aspect-ratio: 1;
-        color: #EEEEEE;
-    }
-
     .conv:hover{
         cursor: pointer;
         background-color: #222222;
     }
 
-    .conv:hover .conv-more{
-        visibility: visible;
-    }
-
-    .conv p{
+    .conv{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         font-size: 1.2rem;
         margin: 0.8rem 0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        height: 3rem;
+        border-radius: 0.75rem;
+        color: rgb(204, 204, 204);
+        padding: 1rem;
     }
 
-    ul{
+
+    .conv-delete {
+        pointer-events: all;
+        cursor: pointer;
+    }
+
+    .list-conv ul{
         padding-left: 0;
     }
 

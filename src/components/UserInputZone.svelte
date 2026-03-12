@@ -1,43 +1,36 @@
-<script>
+<script lang="ts">
     import AddButton from "./AddButton.svelte";
-    import IoMdSend from 'svelte-icons/io/IoMdSend.svelte'
-    import { messages, userMessages, currentConversation } from './store.js';
+    import { SendHorizontal } from "lucide-svelte";
+    import { currentConversationId, conversations } from '../stores/store';
+    import { sendPrompt } from "../services/prompt.service";
+    import type { Message } from "../types/types";
 
-    let textarea;
+    let textarea: HTMLTextAreaElement | null = null;
     let textareaValue = "";
     const originHeight = 2.5;
 
-    const DATABASE_MESSAGES_URL = 'http://127.0.0.1:8090/api/collections/ochat_messages/records';
-
     const resizeTextarea = () => {
-        textarea.style.height = `${textarea.scrollHeight}px`
+        if (!textarea) return;
+        textarea.style.height = `${textarea.scrollHeight}px`;
         textarea.style.marginBottom = `calc(${textarea.scrollHeight}px - ${originHeight}rem)`;
-    }
+    };
 
-    function handleSubmit(event)
+    function handleSubmit(event: SubmitEvent)
     {
         event.preventDefault();
         sendMessage();
     }
 
-    function sendMessage(){
-
+    function sendMessage()
+    {
         if(textareaValue.trim() !== "")
         {
-            const formData = new FormData();
-            formData.append("content", textareaValue);
-            formData.append("is_ai", "false");
-            formData.append("relation", $currentConversation);
-            addEntryToChatDatabase(formData);
-            
-            userMessages.update(current => [...current, textareaValue, $currentConversation]);
-            messages.update(current => [...current, {is_ai: false, content: textareaValue, relation: $currentConversation}]);
-            textarea.value = "";
+            addEntryToChatDatabase(textareaValue);
             textareaValue = "";
         }
     }
 
-    function onKeyDown(event)
+    function onKeyDown(event: KeyboardEvent)
     {
         if (event.key === 'Enter')
         {
@@ -46,16 +39,41 @@
         }
     }
 
-    async function addEntryToChatDatabase(entry)
+    async function addEntryToChatDatabase(prompt: string)
     {
-        try{
-            await fetch(DATABASE_MESSAGES_URL,{
-                method: "POST",
-                body: entry,
+        const convId = $currentConversationId;
+        const userMessage: Message = { prompt, response: "" };
+
+        conversations.update((list) => {
+            return list.map((conv) => {
+                if (conv.conversationId === convId) {
+                    const msgs = conv.messages ?? [];
+                    return { ...conv, messages: [...msgs, userMessage] };
+                }
+                return conv;
             });
-        }
-        catch(error){
-            console.error("Fetch Failed : " + error.message);
+        });
+
+        try {
+            const res = await sendPrompt(convId, prompt);
+
+            conversations.update((list) => {
+                return list.map((conv) => {
+                    if (conv.conversationId === convId) {
+                        const msgs = conv.messages ?? [];
+                        msgs[msgs.length - 1] = { prompt: prompt, response: res };
+                        return { ...conv, messages: msgs };
+                    }
+                    return conv;
+                });
+            });
+
+        } catch (error) {
+            if (error instanceof Error) {
+                console.error("Fetch Failed: " + error.message);
+            } else {
+                console.error("Fetch Failed: Unknown error", error);
+            }
         }
     }
 
@@ -66,7 +84,7 @@
     <form on:submit={handleSubmit}>
         <textarea placeholder="Ask the chat" class="user-chat-input" on:keydown={onKeyDown} bind:this={textarea} bind:value={textareaValue} on:input={resizeTextarea}></textarea>
         <button type="submit">
-            <IoMdSend />
+            <SendHorizontal size={30}/>
         </button>
     </form>
 </div>
