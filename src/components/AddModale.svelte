@@ -1,15 +1,15 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
 
   export let isOpen = false;
   let inputValue = "";
 
-  function handleSubmit(e) {
+  function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
-    dispatch("submit", inputValue); // envoie la valeur au parent
+    dispatch("submit", inputValue);
     inputValue = "";
-    dispatch("close"); // ferme la modale
+    dispatch("close");
   }
 
   function closeModal() {
@@ -18,14 +18,27 @@
 </script>
 
 {#if isOpen}
-  <div class="overlay" on:click={closeModal}>
-    <div class="modal" on:click|stopPropagation>
-      <form on:submit={handleSubmit}>
-        <input type="text" placeholder="Enter Chat Name" bind:value={inputValue} autofocus/>
-        <button type="submit">Add</button>
-      </form>
+    <div 
+        class="overlay"
+        role="button"
+        tabindex="0"
+        on:click={closeModal}
+        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') closeModal(); }}
+    >
+        <div
+        class="modal"
+        role="dialog"
+        tabindex="0"
+        aria-modal="true"
+        on:click|stopPropagation
+        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+        >
+            <form on:submit={handleSubmit}>
+                <input type="text" placeholder="Enter Chat Name" bind:value={inputValue}/>
+                <button type="submit">Add</button>
+            </form>
+        </div>
     </div>
-  </div>
 {/if}
 
 <style>
