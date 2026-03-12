@@ -1,4 +1,5 @@
 <script>
+    import { base } from '$app/paths';
     import { currentConversation } from "../stores/store";
     import Markdown from 'svelte-exmarkdown';
 
@@ -14,14 +15,14 @@
         <div class="user">
             <p>{message.prompt}</p>
             <div class="avatar">
-                <img class="avatar" src="/user-avatar.jpg" alt="user avatar"/>
+                <img class="avatar" src="{base}/user-avatar.jpg" alt="user avatar"/>
             </div>
         </div>
 
         <div class="ai">
             <p><Markdown md={message.response} /></p>
             <div class="avatar">
-                <img class="avatar" src="/ai-avatar.png" alt="ai avatar"/>
+                <img class="avatar" src="{base}/ai-avatar.png" alt="ai avatar"/>
             </div>
         </div>
     {/each}
