@@ -1,10 +1,13 @@
 <script lang="ts">
     import AddButton from "./AddButton.svelte";
+    import AddModal from "./AddModale.svelte";
     import { SendHorizontal } from "lucide-svelte";
     import { currentConversationId, conversations } from '../stores/store';
     import { sendPrompt } from "../services/prompt.service";
     import type { Message } from "../types/types";
+    import { addConversation } from "../utils/addConversation";
 
+    let showModal = false;
     let textarea: HTMLTextAreaElement | null = null;
     let textareaValue = "";
     const originHeight = 2.5;
@@ -19,6 +22,14 @@
     {
         event.preventDefault();
         sendMessage();
+    }
+
+    function handleAddSubmit(value: string) {
+        addConversation(value);
+    }
+
+    function handleAddClick() {
+        showModal = true;
     }
 
     function sendMessage()
@@ -80,13 +91,19 @@
 </script>
 
 <div class="inputZone">
-    <AddButton />
+    <AddButton  onClick={handleAddClick} />
     <form on:submit={handleSubmit}>
         <textarea placeholder="Ask the chat" class="user-chat-input" on:keydown={onKeyDown} bind:this={textarea} bind:value={textareaValue} on:input={resizeTextarea}></textarea>
         <button type="submit">
             <SendHorizontal size={30}/>
         </button>
     </form>
+
+    <AddModal
+        bind:isOpen={showModal}
+        on:submit={(e: CustomEvent<string>) => handleAddSubmit(e.detail)}
+        on:close={() => showModal = false}
+    />
 </div>
 
 <style>

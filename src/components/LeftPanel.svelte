@@ -1,8 +1,9 @@
 
 <script lang="ts">
-    import { conversations, currentConversationId, currentConversation, messages, userMessages } from '../stores/store';
-    import { createConversation, deleteConversation } from "../services/conversation.service";
+    import { conversations, currentConversationId } from '../stores/store';
+    import { deleteConversation } from "../services/conversation.service";
     import { Trash2 } from "lucide-svelte";
+    import { addConversation } from '../utils/addConversation';
 
     let addConvInputValue : string;
 
@@ -24,16 +25,6 @@
         {
             addConversation(addConvInputValue);
             addConvInputValue = "";
-        }
-    }
-
-    async function addConversation(name : string){
-        try {
-            const newConv = await createConversation(name);
-            conversations.update(list => [...list, newConv]);
-            currentConversationId.set(newConv.conversationId);
-        } catch (err) {
-            console.error("Erreur lors de la création de la conversation :", err);
         }
     }
 

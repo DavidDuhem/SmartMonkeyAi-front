@@ -1,8 +1,10 @@
-<script>
+<script lang="ts">
 import { Plus } from "lucide-svelte";
+
+export let onClick: () => void;
 </script>
 
-<button aria-label="Menu">
+<button aria-label="Menu" on:click={onClick}>
     <Plus />
 </button>
 
