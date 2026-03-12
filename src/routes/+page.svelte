@@ -7,7 +7,7 @@
     import LeftPanel from "../components/LeftPanel.svelte";
     import { createSessionId } from "../services/session.service";
     import { getAllConversations } from "../services/conversation.service";
-    import { conversations, currentConversationId } from "../stores/store";
+    import { conversations, currentConversationId, initCurrentConversationId } from "../stores/store";
     
     let container: HTMLDivElement | null = null;
 
@@ -31,6 +31,8 @@
         if (list.length) {
             currentConversationId.set(list[0].conversationId);
         }
+
+        initCurrentConversationId();
     });
 
 </script>

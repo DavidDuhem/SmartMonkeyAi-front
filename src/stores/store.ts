@@ -12,3 +12,16 @@ export const currentConversation = derived(
   ([$conversations, $currentConversationId]) =>
     $conversations.find(c => c.conversationId === $currentConversationId)
 );
+
+export function initCurrentConversationId() {
+  if (typeof localStorage !== "undefined") {
+    const savedId = localStorage.getItem("currentConversationId");
+    if (savedId) {
+      currentConversationId.set(Number(savedId));
+    }
+
+    currentConversationId.subscribe((id) => {
+      localStorage.setItem("currentConversationId", id.toString());
+    });
+  }
+}

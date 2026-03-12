@@ -1,9 +1,9 @@
 <script>
-import TiPlus from 'svelte-icons/ti/TiPlus.svelte'
+import { Plus } from "lucide-svelte";
 </script>
 
 <button aria-label="Menu">
-    <TiPlus />
+    <Plus />
 </button>
 
 <style>

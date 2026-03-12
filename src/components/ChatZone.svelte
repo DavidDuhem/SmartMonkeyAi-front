@@ -28,42 +28,65 @@
 {/if}
 
 <style>
-     .user{
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        gap: 1rem;
-        margin: 1rem;
+
+.user{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin: 1rem;
+}
+
+.ai{
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin: 1rem;
+}
+
+.avatar{
+    width: 3rem;
+    height: 3rem;
+    border-radius: 25px;
+    aspect-ratio: 1;
+    background-color: rgb(233, 233, 233);
+}
+
+.user > p{
+    border-radius:  10px 0 10px 10px;
+    background-color: #424242;
+}
+
+.ai > p{
+    border-radius:  0 10px 10px 10px;
+    background-color: #303030;
+}
+
+p{
+    padding: 1rem 2rem;
+    font-size: 1.3rem;
+}
+
+@media (max-width: 600px) {
+    .avatar {
+        width: 2rem;
+        height: 2rem;
     }
 
-    .ai{
-        display: flex;
-        flex-direction: row-reverse;
-        justify-content: flex-end;
-        gap: 1rem;
-        margin: 1rem;
+    p {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
     }
 
-    .avatar{
-        width: 3rem;
-        height: 3rem;
-        border-radius: 25px;
-        aspect-ratio: 1;
-        background-color: rgb(233, 233, 233);
+    .user > p, .ai > p {
+        max-width: 70%;
+        word-wrap: break-word;
     }
 
-    .user > p{
-        border-radius:  10px 0 10px 10px;
-        background-color: #424242;
+    .user, .ai {
+        gap: 0.5rem;
+        margin: 0.5rem;
     }
-
-    .ai > p{
-        border-radius:  0 10px 10px 10px;
-        background-color: #303030;
-    }
-
-    p{
-        padding: 1rem 2rem;
-        font-size: 1.3rem;
-    }
+}
 </style>
